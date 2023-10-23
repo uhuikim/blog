@@ -1,0 +1,296 @@
+---
+title: Next.js와 MDX를 활용한 블로그 -  목차 컴포넌트(TOC) 만들기
+abstract: 포스트 내용을 한눈에 볼 수 있는 목차 컴포넌트를 만들어 보았어요. 스크롤 위치에 따라 active가 되고, 링크 클릭시 해당 위치로 스크롤 시켜주는 컴포넌트입니다.
+publishedOn: '2023.10.12'
+tags: ['Next.js']
+time: '5min'
+---
+
+이번에 Next.js 13버전과 MDX를 활용하여 블로그를 만들고 있습니다.
+
+레퍼런스 조사를 하면서 여러 블로그를 보았는데요, 사이드에 목차를 보여주는게 가독성에 더 좋다는 생각이 들더라고요!해서 목차 컴포넌트를 만들어보았습니다!😆
+
+mdx를 활용하는건 처음이라서 조금 헤맸는데!!제가 만든 방법을 한번 공유해볼게요!!
+
+아 참고로 제로베이스에서 [기술 블로그 정리](https://zero-base.co.kr/event/media_insight_contents_FE_frontend_blog)를 잘해놨더라고요~
+
+블로그 만들 때 참고해보세요!!
+
+---
+
+## hash link로 원하는 위치로 이동시키기
+
+목차를 클릭했을 때 해당 위치로 이동시켜주기 위해서 `hash link`를 사용하였습니다.
+
+mdx로 작성된 문서에 어떻게 hash링크를 넣어야하지 고민을 하며...마크다운 문법을 찾아봤었는데ㅎㅎ
+mdx 파일을 html로 변환할때 사용한 `next-mdx-remote`를 이용하여, custom 컴포넌트로 변환시켜주면 되더라고요!
+
+[mdx heading에 anchor넣기](https://tomekdev.com/posts/anchors-for-headings-in-mdx)
+
+### 커스텀 컴포넌트 만들기
+
+```jsx
+import Link from 'next/link';
+
+import styles from './H2.module.scss';
+
+// 숫자,한글 등을 제외한 글씨를 제거하고 공백을 -으로 변경함
+const getAnchor = (text) => {
+    return text
+        .toLowerCase()
+        .replace(/[^a-z0-9ㄱ-ㅣ가-힣 ]/g, '')
+        .replace(/[ ]/g, '-');
+};
+
+const H2 = ({ children }) => {
+    const anchor = getAnchor(children);
+    const link = `#${anchor}`;
+
+    return (
+        <h2 id={anchor} className={styles.h2}>
+            <Link href={link} className={styles.anchor}>
+                §
+            </Link>
+            {children}
+        </h2>
+    );
+};
+export default H2;
+```
+
+우선 hash 링크를 만들기 위해서 getAnchor란 함수를 사용하였습니다.
+숫자, 한글, 영문자를 제외한 글씨는 제거하고, 공백은 - 로 연결하여 만들었어요.
+
+이를 h2태그의 id값과 Link태그의 href값에 넣어주면 됩니다.
+
+### 커스텀 컴포넌트로 변환하기
+
+```jsx
+import { MDXRemote } from 'next-mdx-remote/rsc';
+
+async function BlogPost({ params }) {
+    return (
+        <MDXRemote
+            source={content}
+            components={{
+                h2: H2,
+                h3: H3
+            }}
+        />
+    );
+}
+
+export default BlogPost;
+```
+
+그 다음 위에서 만든 컴포넌트로 h2, h3태그를 변경해줍니다.
+
+그러면 짜잔!🎉 이렇게 링크를 클릭하면 해당 위치로 이동합니다.
+
+<video
+    autoPlay
+    loop
+    muted
+    playsInline
+
+>
+
+    <source
+        src="https://github.com/uhuikim/blog-source/blob/main/table-of-content/hash-link.webm?raw=true"
+        type="video/webm"
+    />
+    <source
+        src="https://github.com/uhuikim/blog-source/blob/main/table-of-content/hash-link.mp4?raw=true"
+        type="video/mp4"
+    />
+
+</video>
+
+여기서 잠깐🦄
+
+스크롤했을때 위에 상단과 여백없이 딱 붙게 되는데요!
+
+> css 속성 `scroll-margin-top` 을 사용하면 상단 간격을 띄울수 있답니다.
+
+## mdx에서 Heading 추출하기
+
+그 다음으로는 mdx문서에서 heading 리스트를 추출해볼게요
+
+[목차 컴포넌트 만들기](https://www.freecodecamp.org/news/how-to-build-a-table-of-contents-component/)
+👈 저는 이글을 보고 따라했는데요!
+[코드](https://github.com/kaf-lamed-beyt/extract-md-headings/blob/master/src/index.ts)가 깃허브에 코드가 공개되어있어서 이 코드를 사용했어요ㅎㅎ
+
+```js
+import matter from 'gray-matter';
+
+export const loadBlogPost = async function loadBlogPost(slug) {
+    let rawContent;
+    const headings = [];
+    const headingMatcher = /^(#+)\s(.+)$/gm;
+
+    // mdx파일을 불러오는 코드
+    try {
+        rawContent = await readFile(`/content/${slug}.mdx`);
+    } catch (err) {
+        return null;
+    }
+
+    // content를 추출함
+    const { data: frontmatter, content } = matter(rawContent);
+
+    // #으로 시작하는 Heading을 추출함
+    let match = headingMatcher.exec(content);
+    while (match !== null) {
+        const level = match[1].length;
+        const title = match[2].trim();
+        const name = getAnchor(title);
+
+        headings.push({ name, title, level });
+        match = headingMatcher.exec(content);
+    }
+    return { frontmatter, content, headings };
+};
+```
+
+이렇게 헤딩을 추출하였답니다!
+
+```js
+//result
+[
+    {
+        name: 'hash-link로-원하는-위치로-이동시키기',
+        title: 'hash link로 원하는 위치로 이동시키기',
+        level: 2
+    },
+    {
+        name: '커스텀-컴포넌트-만들기',
+        title: '커스텀 컴포넌트 만들기',
+        level: 3
+    }
+];
+```
+
+결과물은 이렇게 나와요!
+
+## 목차 컴포넌트 만들기
+
+자 그럼 이제 본격적으로 목차 컴포넌트를 만들어봅시다!
+
+```jsx
+'use client';
+
+import React, { useEffect } from 'react';
+
+import clsx from 'clsx';
+import Link from 'next/link';
+
+import styles from './TableOfContents.module.scss';
+
+function TableOfContents({ headings }) {
+    // acrive 상태 관리
+    const [active, setActive] = React.useState(
+        headings.length > 0 ? headings[0].name : ''
+    );
+
+    const isElementInViewport = (el) => {
+        const rect = el.getBoundingClientRect();
+        return (
+            rect.top >= 0 &&
+            rect.left >= 0 &&
+            rect.bottom <=
+                (window.innerHeight || document.documentElement.clientHeight) &&
+            rect.right <= (window.innerWidth || document.documentElement.clientWidth)
+        );
+    };
+    useEffect(() => {
+        const handleScroll = () => {
+            const headingElements = headings.map(({ name }) =>
+                document.getElementById(name)
+            );
+
+            const visibleHeadings = headingElements.filter((el) =>
+                isElementInViewport(el)
+            );
+            if (visibleHeadings.length > 0) {
+                setActive(visibleHeadings[0].id);
+            }
+        };
+
+        document.addEventListener('scroll', handleScroll);
+        return () => {
+            document.removeEventListener('scroll', handleScroll);
+        };
+    }, [headings]);
+
+    return (
+        <aside className={styles.wrap}>
+            <div className={styles.container}>
+                <nav className={styles.nav}>
+                    <h2>TABLE OF CONTENTS</h2>
+                    {headings.map(({ name, title, level }) => (
+                        <Link
+                            onClick={() => setActive(name)}
+                            key={name}
+                            href={`#${name}`}
+                            className={clsx(styles[`depth${level - 1}`], {
+                                [styles.active]: active === name
+                            })}
+                        >
+                            {title}
+                        </Link>
+                    ))}
+                </nav>
+            </div>
+        </aside>
+    );
+}
+
+export default TableOfContents;
+```
+
+-   추출한 heading 리스트를 map을 돌려줍니다.
+-   위에서와 동일하게 Link태그에 hash링크를 넣어줍니다.
+-   active를 관리하기 위한 state를 만들어줍니다.
+-   getBoundingClientRect를 활용하여 현재 스크롤 위치에서 보여지는 헤딩을 active시켜줍니다.
+-   active값을 활용하여 스타일링을 해줍니다.
+
+이 또한 위에서 공유한 블로그를 참고했습니다!
+
+뺌!!그럼 요렇게 스크롤에 따라 색이 잘 변합니다!!
+목차 컴포넌트에서 링크 클릭을 해도 해당 위치로 잘 이동하네요!
+
+<video
+    autoPlay
+    loop
+    muted
+    playsInline
+
+>
+
+    <source
+        src="https://github.com/uhuikim/blog-source/blob/main/table-of-content/active.webm?raw=true"
+        type="video/webm"
+    />
+    <source
+        src="https://github.com/uhuikim/blog-source/blob/main/table-of-content/active.mp4?raw=true"
+        type="video/mp4"
+    />
+
+</video>
+
+사실 처음만들 때 목차를 클릭해도 해당 위치로 스크롤이 되지 않아서
+[HashScroll](https://github.com/vercel/next.js/issues/44625#issuecomment-1405018008) 이 방법으로 layout에서 감싸줬었는데,
+세상에!! Link에 scroll={'false'} 값을 빼주니까 작동을 하네요...ㅎㅎㅎㅎ
+
+네! 이렇게 목차 컴포넌트를 만들어보았습니다.
+하나씩 하나씩 만들어가면서 ,또 공유해보겠습니다!
+
+그럼 이만~~
+
+## 참고
+
+[개발자 블로그 모음집](https://zero-base.co.kr/event/media_insight_contents_FE_frontend_blog)
+[mdx heading에 anchor넣기](https://tomekdev.com/posts/anchors-for-headings-in-mdx)
+[목차 컴포넌트 만들기](https://www.freecodecamp.org/news/how-to-build-a-table-of-contents-component/)
+[heading추출 코드](https://github.com/kaf-lamed-beyt/extract-md-headings/blob/master/src/index.ts)
+[HashScroll](https://github.com/vercel/next.js/issues/44625#issuecomment-1405018008)

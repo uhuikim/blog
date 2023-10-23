@@ -1,7 +1,18 @@
-export default function Home() {
+import { getBlogPostList } from '@/helpers/file-helper';
+import BlogSummaryCard from '@/components/BlogSummaryCard';
+
+import styles from './page.module.scss'
+
+const Home = async () => {
+  const blogPosts = await getBlogPostList();
+
   return (
-    <main >
-      안녕하세요
+    <main className={styles.container}>
+      {blogPosts.map(({ slug, ...delegated }) => (
+        <BlogSummaryCard key={slug} slug={slug} {...delegated} />
+      ))}
     </main>
   )
 }
+
+export default Home;

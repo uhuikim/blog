@@ -1,0 +1,337 @@
+---
+title: 시판 애니메이션 따라하기 - 강남언니 편
+abstract: 이랬는데 요래됐습니다~ before와 after를 효과적으로 보여줄 수 있는 UI를 만들어봅시다.!
+publishedOn: '2023.10.17'
+tags: ['Animation']
+time: '5min'
+---
+
+어릴적 저의 취미는 베이킹이었어요.  
+그 당시 자주 보던 블로그에 시판 제품 만들기라는 카테고리가 있었는데,
+계란 과자 등을 똑같이 따라 만들면서 시중 제품과 맛을 비교해보았던 추억이 있습니다.
+
+그때를 생각하며!!이번에는 시판 애니메이션 효과를 따라해보려고 합니다.😁
+
+<video
+    autoPlay
+    loop
+    muted
+    playsInline
+    width="300"
+    height="380"
+    style={{ margin: '0 auto 30px' }}
+>
+    <source
+        src="https://github.com/uhuikim/blog-source/blob/main/before-after/before-after.webm?raw=true"
+        type="video/webm"
+    />
+    <source
+        src="https://github.com/uhuikim/blog-source/blob/main/before-after/before-after.mp4?raw=true"
+        type="video/mp4"
+    />
+</video>
+
+첫번째로 따라해볼 효과는!!!  
+강남언니의 before과 after를 보여주는 효과랍니다
+
+이랬는데 요래됐습니다~를 정말 효과적으로 보여줄수 있는 UI같아요!!
+
+자 그럼 만들어봅시다!
+
+> ❗이 방법은 그냥 제 생각대로 만든거이며, 해당 서비스에서 구현한 방법이 아님을 알려드립니다.
+
+---
+
+## 결과물
+
+두둥! 결과물을 먼저 보여드릴게요!!  
+엘사의 화장 전 후를 한눈에 비교해 볼 수 있답니다.😝
+
+<DualImageHoverEffect />
+
+<a href="https://codesandbox.io/p/sandbox/vigorous-hoover-3rvftz?embed=1" target="_blank">
+    코드 보러가기
+</a>
+
+## 마크업 작업
+
+우선 마크업 구조를 한번 봅시다.
+
+```html
+<div className="wrap">
+    <div className="container">
+        <div className="rect"></div>
+        <img className="first" />
+        <img className="last" />
+    </div>
+</div>
+```
+
+간략화 해서 표현해봤어요.
+
+<img src="https://github.com/uhuikim/blog-source/blob/main/before-after/structure.png?raw=true" />
+
+이미지를 감싸주는 div.container 태그가 있고, 이 div를 가운데 정렬하기 위해 또 다른 div.wrap로 감싸주고 있습니다.
+마우스 움직임에 따라 함께 움직이는 선은 div.rect로 만들어주고 있어요
+
+div.container로 2개의 이미지를 감싸고 있으며, display grid를 활용하여 2개의 이미지를 하나로 겹쳐놓았습니다.
+
+```css
+.container {
+    display: grid;
+    & > img {
+        grid-area: 1/1;
+    }
+}
+```
+
+이미지는 css의 clip-path를 사용하여 일정부분만 보여지도록 잘라 주었습니다!
+
+```css
+.first {
+    clip-path: polygon(0% 0%, var(--x) 0%, var(--x) 100%, 0% 100%);
+}
+
+.last {
+    clip-path: polygon(var(--x) 0%, 100% 0%, 100% 100%, var(--x) 100%);
+}
+```
+
+자 이렇게 굵은 뼈대를 살펴보았어요! 그 다음은 자바스크립트를 활용하여 마우스의 위치를 가져와봅시다!
+
+## 마우스무브 & 터치무브 이벤트
+
+```jsx
+'use client';
+
+import React, { useRef, useState } from 'react';
+
+import Image from 'next/image';
+
+import styles from './DualImageHoverEffect.module.scss';
+
+function DualImageHoverEffect() {
+    const [activeState, setActiveState] = useState('before');
+    const imageRef = useRef(null);
+    const wrapRef = useRef(null);
+
+    const handleMove = (e) => {
+        const { current } = wrapRef;
+        const { current: imageCurrent } = imageRef;
+        // 엘리먼트의 좌표값을 가져오기
+        const { left } = current.getBoundingClientRect();
+        const { left: imageLeft, width: imageWidth } =
+            imageCurrent.getBoundingClientRect();
+
+        // 이미지와 전체 컨테이너의 gap을 구함
+        const gap = imageLeft - left;
+        // div.rect의 원의 반지름 만큼은 슬라이드를 할 수 없도록 설정하기 위함
+        const r = 15;
+
+        let x = e.pageX - imageLeft;
+
+        // 모바일 touch event 고려
+        const pointer = e.pageX || e.changedTouches[0].pageX;
+        //이미지의 시작부분을 0으로 만들기 위함
+        let x = pointer - imageLeft;
+
+        // (이동범위 설정) div.wrap 밖으로 튀어나가는 것을 막기 위한 처리 , 원의 반지름 만큼은 빼주기
+        if (x < -gap + r) x = -gap + r;
+        if (x > imageWidth + gap - r) x = imageWidth + gap - r;
+        current.style.setProperty('--x', `${x}px`);
+
+        // 하단 before, after 텍스트 active를 위함
+        setActiveState(() => {
+            const ratio = (x / (imageWidth - left)) * 100;
+            return ratio > 50 ? 'before' : 'after';
+        });
+    };
+
+    return (
+        <div
+            ref={wrapRef}
+            style={{
+                '--x': '200px'
+            }}
+            className={styles.wrap}
+            onTouchMove={handleMove}
+            onMouseMove={handleMove}
+            data-state={activeState}
+        >
+            <div ref={imageRef} className={styles.container}>
+                <div className={styles.rect} />
+                <Image
+                    src="https://github.com/uhuikim/blog-source/blob/main/before-after/elsa-before.png?raw=true"
+                    fill
+                    alt="before"
+                    className={styles.first}
+                />
+                <Image
+                    src="https://github.com/uhuikim/blog-source/blob/main/before-after/elsa-after.png?raw=true"
+                    fill
+                    alt="after"
+                    className={styles.last}
+                />
+            </div>
+        </div>
+    );
+}
+
+export default DualImageHoverEffect;
+```
+
+자 이제 조금 머리를 써야합니다!!!  
+오우 이런 작업은 많이 해보지 않아서 수치를 맞추는데 정말 답답쓰 하더라고요!!
+하지만 결국 완성을 해냈습니다!!하하하👏
+
+강남언니를 보면 이미지 뿐만아니라 배경부분까지 슬라이드를 할 수 있는 것을 볼 수 있어요.
+해서 전체를 감싸주는 div.wrap에 `mouseMove`이벤트를 걸어 주었습니다.
+그리고, div.wrap과 div.container `dom`에 접근하기 위해서 `ref`를 사용하였어요.
+
+`handleMouseMove` 함수 안을 살펴봅시다.
+엘리먼트의 좌표값을 구하기 위해 `getBoundingClientRect`를 사용했습니다.
+
+<img
+    src="https://github.com/uhuikim/blog-source/blob/main/before-after/x-position.png?raw=true"
+    style={{ margin: '0 auto 30px' }}
+/>
+
+### 이미지 기준 좌표 설정
+
+이미지를 자르기 위해서는 이미지를 기준으로 한 x 좌표값을 설정해줘야했어요.
+즉 이미지의 시작하는 부분의 좌표를 0으로 설정해 준거죠!
+
+```js
+const pointer = e.pageX || e.changedTouches[0].pageX;
+let x = pointer - imageLeft;
+```
+
+모바일도 고려해주기 위해서 pointer(마우스 위치 or 터치된 위치) 변수를 따로 생성하였습니다.
+pointer 에서 image의 left값을 빼줘서 이미지의 처음 부분을 0으로 만들었어요.
+
+![이미지 처음 0](https://github.com/uhuikim/blog-source/blob/main/before-after/%08mouse-position.png?raw=true)
+그럼 이렇게 이미지의 start부분의 좌표가 0으로 나오는 것을 볼 수 있습니다.
+
+### 좌표 범위 설정
+
+<video
+    autoPlay
+    loop
+    muted
+    playsInline
+>
+
+    <source
+        src="https://github.com/uhuikim/blog-source/blob/main/before-after/over.webm?raw=true"
+        type="video/webm"
+    />
+    <source
+        src="https://github.com/uhuikim/blog-source/blob/main/before-after/over.mp4?raw=true"
+        type="video/mp4"
+    />
+
+</video>
+
+범위를 설정하지 않았을때는 위와 같이 영역을 벗어난 범위까지 선이 튀어나가는 현상을 볼 수 있었습니다.
+이를 해결하기 위해 범위를 설정해 줬는데요,
+강남언니를 보면 선의 가운데에 있는 원이 내부에 있기 때문에 원의 반지름을 함께 계산해 주었답니다!!
+
+```js
+if (x < -gap + r) x = -gap + r;
+if (x > imageWidth + gap - r) x = imageWidth + gap - r;
+```
+
+이렇게 하고 구한 x좌표를 setProperty를 활용하여 --x변수로 설정해주었습니다.
+
+## css
+
+얼마 남지 않았어요!!  
+좀만 더 힘을 내 봅시다ㅎㅎ
+
+이제 구해놓은 x좌표를 활용해서 이미지를 잘라주고, 막대를 움직여 주면 됩니당!!
+
+### clip-path와 transform
+
+<img
+
+src="https://github.com/uhuikim/blog-source/blob/main/before-after/clip-path.png?raw=true"
+style={{ margin: '0 auto 30px' }}
+/>
+
+```css
+.rect {
+    transform: translateX(var(--x));
+}
+
+.first {
+    clip-path: polygon(0% 0%, var(--x) 0%, var(--x) 100%, 0% 100%);
+}
+
+.last {
+    clip-path: polygon(var(--x) 0%, 100% 0%, 100% 100%, var(--x) 100%);
+}
+```
+
+이미지는 위와 같은 이미지처럼 잘라주었고, transform 속성을 사용하여 막대기를 움직여 줬어요.
+
+### 텍스트와 최초 포지션 설정
+
+하단에 있는 before와 after 텍스트의 활성화를 위해서 data 속성을 사용해 봤습니다.  
+마우스의 위치에 따라서 before쪽인지 after쪽인지를 판단해서 activeState로 저장을 해주고 data-state로 설정해줬어요
+
+```jsx
+function DualImageHoverEffect() {
+    const [activeState, setActiveState] = useState('before');
+
+        const handleMouseMove = (e) => {
+            ...
+        setActiveState(() => {
+            const ratio = (x / (imageWidth - left)) * 100;
+            return ratio > 50 ? 'before' : 'after';
+        });
+    };
+
+    return (
+        <div
+            ref={containerRef}
+            style={{
+                '--x': '200px'
+            }}
+            className={styles.wrap}
+            onMouseMove={handleMouseMove}
+            data-state={activeState}
+        >
+            ...
+        </div>
+    );
+}
+
+export default DualImageHoverEffect;
+```
+
+```css
+&[data-state='before']::before {
+    color: hotPink;
+}
+&[data-state='after']::after {
+    color: hotPink;
+}
+```
+
+설정해준 data-state값을 활용하여 위와 같이 css 설정을 해줘서 활성화가 되었을때는 텍스트를 핑크색으로 만들어 줍니다.
+
+이제 마지막으로 초기 선의 위치를 설정하기 위해서 style태그로 --x값을 200px로 설정해주어 마운트 됐을때의 위치를 잡아주었어요.
+
+빼앰 이렇게 하면 완성입니다요~
+
+휴우~ 여기까지 작성하느라 참 힘들었네요ㅎㅎㅎ
+혹시나 해당 UI를 만들게 되신다면 도움이 되었으면 좋겠습니다!!
+
+혹시나 더 효율적인 방법을 아시거나, 수정할 부분이 있다면 공유를 해주시면 좋을 것 같아요ㅎㅎ
+
+그럼 오늘은 여기까지입니다:)
+
+## 참고
+
+[hover effect](https://codepen.io/t_afif/pen/LYdqGKQ)  
+[Card Hover Effects](https://www.youtube.com/watch?v=c4TxETScuXI)
