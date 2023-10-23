@@ -7,15 +7,21 @@
     "node": true,
     "es6": true
   },
+  "parserOptions": {
+    "project": "./tsconfig.json",
+    "createDefaultProgram": true
+  },
   "ignorePatterns": ["node_modules/"],
   "extends": [
     "airbnb",
     "airbnb-typescript",
     "airbnb/hooks",
+    "next/core-web-vitals",
     "plugin:@typescript-eslint/recommended",
     "plugin:prettier/recommended",
     "prettier"
   ],
+
   "rules": {
     "react/react-in-jsx-scope": "off",
     "react/jsx-filename-extension": ["warn", { "extensions": [".ts", ".tsx"] }],
