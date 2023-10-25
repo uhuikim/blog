@@ -4,8 +4,6 @@ import { cookies } from 'next/headers';
 import { COLOR_THEME_COOKIE_NAME } from '@/constants';
 import '@/styles/global.scss';
 
-import styles from './layout.module.scss';
-
 import type { Metadata } from 'next';
 
 const notoSansKr = Noto_Sans_KR({
@@ -37,7 +35,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ko" className={notoSansKr.className} data-color-theme={theme}>
       <body>
-        <main className={styles.wrapper}>{children}</main>
+        <main>{children}</main>
       </body>
     </html>
   );
