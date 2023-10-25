@@ -1,7 +1,7 @@
-import { getBlogPostList } from '@/helpers/file-helper';
 import BlogSummaryCard from '@/components/BlogSummaryCard';
+import { getBlogPostList } from '@/helpers/file-helper';
 
-import styles from './page.module.scss'
+import styles from './page.module.scss';
 
 const Home = async () => {
   const blogPosts = await getBlogPostList();
@@ -12,7 +12,7 @@ const Home = async () => {
         <BlogSummaryCard key={slug} slug={slug} {...delegated} />
       ))}
     </main>
-  )
-}
+  );
+};
 
 export default Home;

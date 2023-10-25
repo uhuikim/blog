@@ -1,0 +1,8 @@
+@import './base/reset';
+
+html {
+  color: var(--color-text);
+  letter-spacing: -0.03125em;
+  --scroll-behavior: smooth !important;
+  scroll-behavior: smooth !important;
+}

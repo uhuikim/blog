@@ -1,16 +1,17 @@
 import * as React from 'react';
-import styles from './BlogSummaryCard.module.scss';
+
 import dayjs from 'dayjs';
 import Link from 'next/link';
+
 import { BlogFrontmatterType } from '@/types/blog';
 
-function BlogSummaryCard(props: BlogFrontmatterType) {
+import styles from './BlogSummaryCard.module.scss';
 
+function BlogSummaryCard(props: BlogFrontmatterType) {
   const { title, slug, publishedOn, abstract, tags } = props;
   const href = `/posts/${slug}`;
 
-  const humanizedDate =
-    dayjs(new Date(publishedOn)).format('YYYY.MM.DD')
+  const humanizedDate = dayjs(new Date(publishedOn)).format('YYYY.MM.DD');
 
   return (
     <>
@@ -34,7 +35,7 @@ function BlogSummaryCard(props: BlogFrontmatterType) {
         </Link>
       </div>
     </>
-  )
+  );
 }
 
 export default BlogSummaryCard;
